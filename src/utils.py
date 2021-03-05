@@ -1,6 +1,6 @@
 import glob
 from itertools import combinations
-from init_log import init_log
+# from init_log import init_log
 from arg_parser import parse_config
 import pandas as pd
 from scipy.spatial import distance
@@ -21,6 +21,8 @@ class Utils:
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
+        # check elkai
+        # self.data = np.delete(pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1], 0, 0)
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
         self.num_generation = ga_config["num_generation"]
@@ -30,9 +32,12 @@ class Utils:
         self.i_pot = self.data[0, 1:3]
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
                                 if self.data[i, 3] == 1 else float('inf')
-                                for i in range(len(self.data))]
+                                for i in range(len(self.data))]        
         self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
                                  for i in range(len(self.data))] for j in range(len(self.data))]
+        # check elkai
+        # self.truck_distances = [[distance.euclidean(self.data[i, 1:3], self.data[j, 1:3])
+        #                          for i in range(len(self.data))] for j in range(len(self.data))]
 
     @classmethod
     def get_instance(cls):
@@ -45,16 +50,26 @@ class Utils:
 
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
+
+        if len(city_served_by_truck_list) == 0:
+            return 0
+
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
-        route = elkai.solve_float_matrix(cost_matrix, runs=1)
-        
-        return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
+        # print("city list: ")
+        # print(city_served_by_truck_list)
 
+        route = elkai.solve_float_matrix(cost_matrix, runs=10)
+        # print(route)
+        # return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
+        return (sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])) / self.truck_speed
 
 
     def cal_time2serve_by_drones(self, individual: list):
         dist_list = [self.drone_distances[i] for i in individual if i != 0]
+
+        if len(dist_list) == 0:
+            return 0
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -111,8 +126,10 @@ class Utils:
     def cxRandomRespect(self, ind1, ind2):
         for i in range(0, len(ind1), 1):
             if ind1[i] != ind2[i]:
-                ind1[i] = random.randint(0, 1)
-                ind2[i] = random.randint(0, 1)
+                if random.uniform(0, 1) < 0.5:
+                    c = ind1[i]
+                    ind1[i] = ind2[i]
+                    ind2 = c
         return ind1, ind2
 
 if __name__ == '__main__':
@@ -120,20 +137,45 @@ if __name__ == '__main__':
     # var = Utils.get_instance()
     # for _ in range(10):
     #     print(Utils.get_instance().init_individual(5))
-    logger = init_log()
-    result = []
-    logger.info("runs = 10 / runs = 1: ")
-    for i in range(15):
-        ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
-        comp = Utils.get_instance().cal_time2serve_by_truck(ind)
-        logger.info("No " + str(i) + ": " + str(comp))
-        result.append(comp)
     
-    avg = np.mean(result)
-    std = np.std(result)
-    mi = np.min(result)
-    ma = np.max(result)
-    logger.info([mi, ma, avg, std])
+    # logger = init_log()
+    # result = []
+    # logger.info("runs = 10 / runs = 1: ")
+    # for i in range(15):
+    #     ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+    #     comp = Utils.get_instance().cal_time2serve_by_truck(ind)
+    #     logger.info("No " + str(i) + ": " + str(comp))
+    #     result.append(comp)
+    
+    # avg = np.mean(result)
+    # std = np.std(result)
+    # mi = np.min(result)
+    # ma = np.max(result)
+    # logger.info([mi, ma, avg, std])
 
 
+    
+    # TEST BERLIN 52
+    # best solution for berlin52_0_20
+    
+    data = Utils.get_instance().data
+    best_sol = [1] * len(Utils.get_instance().data)
+    truck = [0, 25, 12, 28, 27, 14, 13, 52, 11, 32, 17, 7, 2, 42, 30, 20, 16, 37, 48]
+    truck.sort()
+    print(truck)
+
+    # his_res = 0
+    # for i in range(-1, len(truck) - 1):
+    #     his_res += Utils.get_instance().truck_distances[truck[i]][truck[i + 1]]
+    # print("his res = " + str(his_res))
+
+    for i in truck:
+        best_sol[i] = 0
+
+    print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
+    print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
+    
+    # all_truck = [0] * len(Utils.get_instance().data)
+    # print(Utils.get_instance().cal_fitness(all_truck))
+    
 
