@@ -31,7 +31,7 @@ class Utils:
         self.num_run = ga_config["num_run"]
         self.i_pot = self.data[0, 1:3]
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
-                                if self.data[i, 3] == 1 else float('inf')
+                                if self.data[i, 3] == 0 else float('inf')
                                 for i in range(len(self.data))]        
         self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
                                  for i in range(len(self.data))] for j in range(len(self.data))]
@@ -66,7 +66,12 @@ class Utils:
 
 
     def cal_time2serve_by_drones(self, individual: list):
-        dist_list = [self.drone_distances[i] for i in individual if i != 0]
+        # dist_list = [self.drone_distances[i] for i in individual if i != 0]
+
+        dist_list = []
+        for i in range(len(individual)):
+            if individual[i] == 1:
+                dist_list.append(self.drone_distances[i])
 
         if len(dist_list) == 0:
             return 0
@@ -96,13 +101,15 @@ class Utils:
                    self.cal_time2serve_by_drones(individual=individual))
 
     def init_individual(self, size):
-        ind = [random.randint(0, 1) if self.data[i, 3] == 1 else 0 for i in range(size)]
+        # ind[i] == 0 => served by truck
+        # ind[i] == 1 => served by drone
+        ind = [random.randint(0, 1) if self.data[i, 3] == 0 else 0 for i in range(size)]
         ind[0] = 0
         return ind
 
     def mutate_flip_bit(self, individual, ind_pb):
         for i in range(1, len(individual)):
-            if random.random() < ind_pb and (self.data[i, 3] == 1 or individual[i] == 1):
+            if random.random() < ind_pb and (self.data[i, 3] == 0 or individual[i] == 1):
                 individual[i] = type(individual[i])(not individual[i])
         return individual,
 
@@ -154,28 +161,34 @@ if __name__ == '__main__':
     # logger.info([mi, ma, avg, std])
 
 
-    
+
     # TEST BERLIN 52
     # best solution for berlin52_0_20
     
-    data = Utils.get_instance().data
-    best_sol = [1] * len(Utils.get_instance().data)
-    truck = [0, 25, 12, 28, 27, 14, 13, 52, 11, 32, 17, 7, 2, 42, 30, 20, 16, 37, 48]
-    truck.sort()
-    print(truck)
+    # data = Utils.get_instance().data
+    # best_sol = [1] * len(Utils.get_instance().data)
+    # truck = [0, 25, 12, 28, 27, 14, 13, 52, 11, 32, 17, 7, 2, 42, 30, 20, 16, 37, 48]
 
-    # his_res = 0
+    # his_res = 0.0
     # for i in range(-1, len(truck) - 1):
     #     his_res += Utils.get_instance().truck_distances[truck[i]][truck[i + 1]]
     # print("his res = " + str(his_res))
 
-    for i in truck:
-        best_sol[i] = 0
+    # for i in truck:
+    #     best_sol[i] = 0
 
-    print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
-    print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
+    # print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
+    # print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
     
     # all_truck = [0] * len(Utils.get_instance().data)
     # print(Utils.get_instance().cal_fitness(all_truck))
-    
 
+
+    # TEST el101
+    # data = Utils.get_instance().data 
+    # best_sol = [0] * 101
+    # drones = [2, 15, 21, 37, 41, 42, 53, 57, 73, 74,87, 95, 97,98]
+    # for i in drones:
+    #     best_sol[i] = 1
+    # print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
+    # print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
