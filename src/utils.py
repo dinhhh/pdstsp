@@ -9,6 +9,14 @@ import numpy as np
 import random
 
 
+def cx_random_respect(ind1, ind2):
+    for i in range(0, len(ind1)):
+        if ind1[i] != ind2[i]:
+            if random.uniform(0, 1) < 0.5:
+                ind1[i], ind2[i] = ind2[i], ind1[i]
+    return ind1, ind2
+
+
 class Utils:
     __utils = None
 
@@ -17,12 +25,17 @@ class Utils:
 
         self.data_files = glob.glob(self.data_path)
         self.truck_speed = constants["truck_speed"]
-        self.drone_speed = constants["drone_speed"] 
+        self.drone_speed = constants["drone_speed"]
         # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
+<<<<<<< HEAD
         # check elkai
         # self.data = np.delete(pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1], 0, 0)
+=======
+        self.reverse_drone_can_serve()
+
+>>>>>>> upstream/main
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
         self.num_generation = ga_config["num_generation"]
@@ -47,6 +60,22 @@ class Utils:
 
     def change_data(self, path):
         self.data = pd.read_csv(path, header=None).to_numpy()[:-1]
+        self.reverse_drone_can_serve()
+        self.i_pot = self.data[0, 1:3]
+        self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
+                                if self.data[i, 3] == 1 else float('inf')
+                                for i in range(len(self.data))]
+        self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
+                                 for i in range(len(self.data))] for j in range(len(self.data))]
+
+    def reverse_drone_can_serve(self):
+        for i in self.data:
+            if i[3] == 0:
+                i[3] = 1
+            else:
+                i[3] = 0
+
+        self.data[0, 3] = 0
 
     def cal_time2serve_by_truck(self, individual: list):
         city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
@@ -56,6 +85,7 @@ class Utils:
 
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
+<<<<<<< HEAD
         # print("city list: ")
         # print(city_served_by_truck_list)
 
@@ -63,9 +93,14 @@ class Utils:
         # print(route)
         # return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
         return (sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])) / self.truck_speed
+=======
+        route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
+>>>>>>> upstream/main
 
+        return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
 
     def cal_time2serve_by_drones(self, individual: list):
+<<<<<<< HEAD
         # dist_list = [self.drone_distances[i] for i in individual if i != 0]
 
         dist_list = []
@@ -75,6 +110,9 @@ class Utils:
 
         if len(dist_list) == 0:
             return 0
+=======
+        dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
+>>>>>>> upstream/main
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -130,6 +168,7 @@ class Utils:
                 if 0 in j:
                     yield j
 
+<<<<<<< HEAD
     def cxRandomRespect(self, ind1, ind2):
         for i in range(0, len(ind1), 1):
             if ind1[i] != ind2[i]:
@@ -138,12 +177,15 @@ class Utils:
                     ind1[i] = ind2[i]
                     ind2 = c
         return ind1, ind2
+=======
+>>>>>>> upstream/main
 
 if __name__ == '__main__':
     # print(Utils.get_instance().cal_fitness([0, 0, 1]))
     # var = Utils.get_instance()
     # for _ in range(10):
     #     print(Utils.get_instance().init_individual(5))
+<<<<<<< HEAD
     
     # logger = init_log()
     # result = []
@@ -192,3 +234,19 @@ if __name__ == '__main__':
     #     best_sol[i] = 1
     # print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
     # print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
+=======
+    logger = init_log()
+    result = []
+    logger.info("runs = 10 / runs = 1: ")
+    for i in range(15):
+        ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+        comp = Utils.get_instance().cal_time2serve_by_truck(ind)
+        logger.info("No " + str(i) + ": " + str(comp))
+        result.append(comp)
+
+    avg = np.mean(result)
+    std = np.std(result)
+    mi = np.min(result)
+    ma = np.max(result)
+    logger.info([mi, ma, avg, std])
+>>>>>>> upstream/main
