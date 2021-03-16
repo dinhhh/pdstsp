@@ -7,7 +7,8 @@ from scipy.spatial import distance
 import elkai
 import numpy as np
 import random
-
+import timeit
+from tsp_solver import tsp_solve
 
 def cx_random_respect(ind1, ind2):
     for i in range(0, len(ind1)):
@@ -26,16 +27,12 @@ class Utils:
         self.data_files = glob.glob(self.data_path)
         self.truck_speed = constants["truck_speed"]
         self.drone_speed = constants["drone_speed"]
-        # self.speed = constants["speed"]
         self.num_drones = constants["num_drones"]
         self.data = pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1]
-<<<<<<< HEAD
         # check elkai
         # self.data = np.delete(pd.read_csv(self.data_files[0], header=None).to_numpy()[:-1], 0, 0)
-=======
         self.reverse_drone_can_serve()
 
->>>>>>> upstream/main
         self.terminate = ga_config["terminate"]
         self.pop_size = ga_config["pop_size"]
         self.num_generation = ga_config["num_generation"]
@@ -44,7 +41,7 @@ class Utils:
         self.num_run = ga_config["num_run"]
         self.i_pot = self.data[0, 1:3]
         self.drone_distances = [distance.euclidean((self.data[i, 1:3]), self.i_pot)
-                                if self.data[i, 3] == 0 else float('inf')
+                                if self.data[i, 3] == 1 else float('inf')
                                 for i in range(len(self.data))]        
         self.truck_distances = [[distance.cityblock(self.data[i, 1:3], self.data[j, 1:3])
                                  for i in range(len(self.data))] for j in range(len(self.data))]
@@ -85,34 +82,26 @@ class Utils:
 
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
-<<<<<<< HEAD
-        # print("city list: ")
-        # print(city_served_by_truck_list)
 
-        route = elkai.solve_float_matrix(cost_matrix, runs=10)
-        # print(route)
-        # return (sum([distance.cityblock(self.data[route[i], 1:3], self.data[route[i + 1], 1:3]) for i in range(-1, len(route) - 1)]) / self.truck_speed)
+        route = elkai.solve_float_matrix(cost_matrix, runs=1)
         return (sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])) / self.truck_speed
-=======
-        route_index = elkai.solve_float_matrix(cost_matrix, runs=1)
->>>>>>> upstream/main
 
-        return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
+        # return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
 
     def cal_time2serve_by_drones(self, individual: list):
-<<<<<<< HEAD
         # dist_list = [self.drone_distances[i] for i in individual if i != 0]
 
-        dist_list = []
-        for i in range(len(individual)):
-            if individual[i] == 1:
-                dist_list.append(self.drone_distances[i])
+        # dist_list = []
+        # for i in range(len(individual)):
+        #     if individual[i] == 1:
+        #         dist_list.append(self.drone_distances[i])
+
+        dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
+        
+        # print(dist_list)
 
         if len(dist_list) == 0:
             return 0
-=======
-        dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
->>>>>>> upstream/main
 
         if self.num_drones == 1:
             return 2 / self.drone_speed * sum(dist_list)
@@ -141,13 +130,13 @@ class Utils:
     def init_individual(self, size):
         # ind[i] == 0 => served by truck
         # ind[i] == 1 => served by drone
-        ind = [random.randint(0, 1) if self.data[i, 3] == 0 else 0 for i in range(size)]
+        ind = [random.randint(0, 1) if self.data[i, 3] == 1 else 0 for i in range(size)]
         ind[0] = 0
         return ind
 
     def mutate_flip_bit(self, individual, ind_pb):
         for i in range(1, len(individual)):
-            if random.random() < ind_pb and (self.data[i, 3] == 0 or individual[i] == 1):
+            if random.random() < ind_pb and (self.data[i, 3] == 1 or individual[i] == 1):
                 individual[i] = type(individual[i])(not individual[i])
         return individual,
 
@@ -168,24 +157,34 @@ class Utils:
                 if 0 in j:
                     yield j
 
-<<<<<<< HEAD
-    def cxRandomRespect(self, ind1, ind2):
-        for i in range(0, len(ind1), 1):
-            if ind1[i] != ind2[i]:
-                if random.uniform(0, 1) < 0.5:
-                    c = ind1[i]
-                    ind1[i] = ind2[i]
-                    ind2 = c
-        return ind1, ind2
-=======
->>>>>>> upstream/main
 
 if __name__ == '__main__':
+    
+    ind = [0] * len(Utils.get_instance().data)
+    start_time = timeit.default_timer()
+    Utils.get_instance().cal_time2serve_by_truck(ind)
+    print("time = " + str(timeit.default_timer() - start_time))
+
+    # TEST new best solution for berlin52
+    # ind1 = [0] * len(Utils.get_instance().data)
+    # drone = [5, 6, 15, 18,19,22,23,26,29, 31,35,36,38,40,43,44,45,46,50,51,1,3,4,8,9,10,21,24,33,34,39,41,47,49]
+    # for d in drone:
+    #     ind1[d] = 1
+    # print(Utils.get_instance().cal_fitness(ind1))
+    # print(ind1)
+
+    # print(len(Utils.get_instance().data))
+    # print("------------------------------------------------------------------------")
+    # ind1 = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+    # print(ind1)
+    # print(Utils.get_instance().cal_time2serve_by_drones(ind1))
+    # print("-------------------------------------------------------------------------")
+    # print(Utils.get_instance().drone_distances)
+
     # print(Utils.get_instance().cal_fitness([0, 0, 1]))
     # var = Utils.get_instance()
     # for _ in range(10):
     #     print(Utils.get_instance().init_individual(5))
-<<<<<<< HEAD
     
     # logger = init_log()
     # result = []
@@ -234,19 +233,19 @@ if __name__ == '__main__':
     #     best_sol[i] = 1
     # print(Utils.get_instance().cal_time2serve_by_truck(best_sol))
     # print(Utils.get_instance().cal_time2serve_by_drones(best_sol))
-=======
-    logger = init_log()
-    result = []
-    logger.info("runs = 10 / runs = 1: ")
-    for i in range(15):
-        ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
-        comp = Utils.get_instance().cal_time2serve_by_truck(ind)
-        logger.info("No " + str(i) + ": " + str(comp))
-        result.append(comp)
 
-    avg = np.mean(result)
-    std = np.std(result)
-    mi = np.min(result)
-    ma = np.max(result)
-    logger.info([mi, ma, avg, std])
->>>>>>> upstream/main
+    
+    # logger = init_log()
+    # result = []
+    # logger.info("runs = 10 / runs = 1: ")
+    # for i in range(15):
+    #     ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+    #     comp = Utils.get_instance().cal_time2serve_by_truck(ind)
+    #     logger.info("No " + str(i) + ": " + str(comp))
+    #     result.append(comp)
+
+    # avg = np.mean(result)
+    # std = np.std(result)
+    # mi = np.min(result)
+    # ma = np.max(result)
+    # logger.info([mi, ma, avg, std])
