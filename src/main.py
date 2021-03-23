@@ -3,6 +3,7 @@ from deap import base, creator, tools, algorithms
 from init_log import init_log
 from utils import Utils
 from utils import cx_random_respect
+import timeit
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.,))
 FitnessMin = creator.FitnessMin
@@ -27,24 +28,22 @@ def run_ga(logger):
     toolbox = base.Toolbox()
     toolbox.register("individual", init_individual, len(Utils.get_instance().data))
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-<<<<<<< HEAD
     toolbox.register("mate", tools.cxTwoPoint)
     # toolbox.register("mate", Utils.get_instance().cxRandomRespect)
-=======
     # toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mate", cx_random_respect)
->>>>>>> upstream/main
+    # toolbox.register("mate", cx_random_respect)
     toolbox.register("mutate", Utils.get_instance().mutate_flip_bit, ind_pb=0.5)
     toolbox.register("select", tools.selTournament, tournsize=20)
     toolbox.register("evaluate", Utils.get_instance().cal_fitness)
-
+    
     for time in range(Utils.get_instance().num_run):
+        
         pop = toolbox.population(Utils.get_instance().pop_size)
         best_ind = toolbox.clone(pop[0])
 
         prev = -1  # use for termination
         count_term = 0  # use for termination
-
+        start_total_time = timeit.default_timer()
         for _ in range(Utils.get_instance().num_generation):
             offsprings = map(toolbox.clone, toolbox.select(pop, len(pop) - 1))
             offsprings = algorithms.varAnd(offsprings, toolbox, Utils.get_instance().cx_pb, Utils.get_instance().mut_pb)
@@ -79,17 +78,20 @@ def run_ga(logger):
             if count_term == Utils.get_instance().terminate:
                 break
 
+            
         record = stats.compile(pop)
         logbook.record(ga=time + 1, **record)
         logger.info(logbook.stream)
-        result.append(min_value)
+        logger.info("total time: " + str(timeit.default_timer() - start_total_time))
+        # result.append(min_value)
+        result.append(Utils.get_instance().cal_time2serve_by_truck_my_solver(best_ind))
 
     avg = np.mean(result)
     std = np.std(result)
     mi = np.min(result)
     ma = np.max(result)
     logger.info([mi, ma, avg, std])
-
+        
 
 if __name__ == '__main__':
     log = init_log()
@@ -99,3 +101,4 @@ if __name__ == '__main__':
         Utils.get_instance().change_data(path)
         log.info("input path: %s" % path)
         run_ga(logger=log)
+                                                                            

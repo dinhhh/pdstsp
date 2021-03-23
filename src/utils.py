@@ -9,6 +9,8 @@ import numpy as np
 import random
 import timeit
 from tsp_solver import tsp_solve
+from tsp_solver import two_opt
+import matplotlib.pyplot as plt
 
 def cx_random_respect(ind1, ind2):
     for i in range(0, len(ind1)):
@@ -83,22 +85,27 @@ class Utils:
         cost_matrix = np.array([[self.truck_distances[i][j]
                                  for i in city_served_by_truck_list] for j in city_served_by_truck_list])
 
-        route = elkai.solve_float_matrix(cost_matrix, runs=1)
-        return (sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])) / self.truck_speed
+        route = elkai.solve_float_matrix(cost_matrix, runs=10)
+        improved_route = two_opt(route, cost_matrix)
 
-        # return sum([cost_matrix[i][i + 1] for i in range(-1, len(route_index) - 1)]) / self.truck_speed
+        # return (sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])) / self.truck_speed
+        return (sum([cost_matrix[improved_route[i]][improved_route[i + 1]]
+                for i in range(-1, len(improved_route) - 1)])) / self.truck_speed
+
+    def cal_time2serve_by_truck_my_solver(self, individual: list):
+        city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
+
+        if len(city_served_by_truck_list) == 0:
+            return 0
+        cost_matrix = np.array([[self.truck_distances[i][j]
+                                 for i in city_served_by_truck_list] for j in city_served_by_truck_list])
+        # start_time_solver = timeit.default_timer()
+        my_solve = tsp_solve(cost_matrix)
+        # end_time_solver = timeit.default_timer()
+        return my_solve
 
     def cal_time2serve_by_drones(self, individual: list):
-        # dist_list = [self.drone_distances[i] for i in individual if i != 0]
-
-        # dist_list = []
-        # for i in range(len(individual)):
-        #     if individual[i] == 1:
-        #         dist_list.append(self.drone_distances[i])
-
         dist_list = [self.drone_distances[index] for index, value in enumerate(individual) if value != 0]
-        
-        # print(dist_list)
 
         if len(dist_list) == 0:
             return 0
@@ -124,7 +131,9 @@ class Utils:
         return 2 * dist / self.drone_speed
 
     def cal_fitness(self, individual: list):
-        return max(self.cal_time2serve_by_truck(individual=individual),
+        # return max(self.cal_time2serve_by_truck(individual=individual),
+        #            self.cal_time2serve_by_drones(individual=individual))
+        return max(self.cal_time2serve_by_truck_my_solver(individual=individual),
                    self.cal_time2serve_by_drones(individual=individual))
 
     def init_individual(self, size):
@@ -159,11 +168,55 @@ class Utils:
 
 
 if __name__ == '__main__':
+    # show result elkai vs my_solver
+    # elkai_cost_array = []
+    # solver_cost_array = []
+    # for i in range(100):
+    #     ind = Utils.get_instance().init_individual(len(Utils.get_instance().data))
+    #     elkai_cost_array.append(Utils.get_instance().cal_time2serve_by_truck(ind))
+    #     solver_cost_array.append(Utils.get_instance().cal_time2serve_by_truck_my_solver(ind))
+
+    # plt.scatter(elkai_cost_array, solver_cost_array)
+    # plt.show()
+
+    data_ignore_depot = Utils.get_instance().data
+    data_ignore_depot[0, 3] = 1
+    individual = [0] * len(data_ignore_depot)
+
+    city_served_by_truck_list = [i for i, v in enumerate(individual) if v == 0]
+    truck_distances = [[distance.euclidean(data_ignore_depot[i, 1:3], data_ignore_depot[j, 1:3])
+                                 for i in range(len(data_ignore_depot))] for j in range(len(data_ignore_depot))]
+    if len(city_served_by_truck_list) == 0:
+        print("cost = 0")
+
+    cost_matrix = np.array([[truck_distances[i][j]
+                            for i in city_served_by_truck_list] for j in city_served_by_truck_list])
+
+    route = elkai.solve_float_matrix(cost_matrix, runs=10)
+    print((sum([cost_matrix[route[i]][route[i + 1]] for i in range(-1, len(route) - 1)])))
     
-    ind = [0] * len(Utils.get_instance().data)
-    start_time = timeit.default_timer()
-    Utils.get_instance().cal_time2serve_by_truck(ind)
-    print("time = " + str(timeit.default_timer() - start_time))
+    improved_route = two_opt(route, cost_matrix)    
+    print((sum([cost_matrix[improved_route[i]][improved_route[i + 1]]
+            for i in range(-1, len(improved_route) - 1)])) / 1)
+
+    """
+    data = Utils.get_instance().data
+    depot = data[0, 1:3]
+    
+    x_coordinates_can_serve_by_drone = [data[i, 1] for i in range(1, len(data)) if data[i, 3] == 0]
+    y_coordinates_can_serve_by_drone = [data[i, 2] for i in range(1, len(data)) if data[i, 3] == 0]
+
+    x_coordinates_NOT_serve_by_drone = [data[i, 1] for i in range(1, len(data)) if data[i, 3] != 0]
+    y_coordinates_NOT_serve_by_drone = [data[i, 2] for i in range(1, len(data)) if data[i, 3] != 0]
+    
+    plt.title(Utils.get_instance().data_path)
+    plt.xlabel("x coordinate")
+    plt.ylabel("y coordinate")
+    plt.scatter([depot[0]], [depot[1]], marker="^")
+    plt.scatter(x_coordinates_can_serve_by_drone, y_coordinates_can_serve_by_drone, c='blue')
+    plt.scatter(x_coordinates_NOT_serve_by_drone, y_coordinates_NOT_serve_by_drone, c='red')
+    plt.show()
+    """
 
     # TEST new best solution for berlin52
     # ind1 = [0] * len(Utils.get_instance().data)
